@@ -36,8 +36,8 @@ mapRoutes.get('/tiles/:z/:x/:y', async (c) => {
     `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
     {
       headers: {
-        'User-Agent': 'Siao/1.0 (family map; +https://siao-web.vira-ia-br.workers.dev)',
-        Referer: 'https://siao-web.vira-ia-br.workers.dev',
+        'User-Agent': 'Siao/1.0 (family map; +https://siao.fer.tec.br)',
+        Referer: 'https://siao.fer.tec.br',
         Accept: 'image/png,image/*;q=0.8',
       },
     },

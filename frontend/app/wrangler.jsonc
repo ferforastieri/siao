@@ -3,7 +3,7 @@
   "main": "../../workers/web/src/index.ts",
   "compatibility_date": "2026-10-20",
   "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": true,
+  "workers_dev": false,
   "routes": [
     { "pattern": "siao.fer.tec.br", "custom_domain": true }
   ],
@@ -48,7 +48,7 @@
   "triggers": { "crons": ["* * * * *"] },
   "vars": {
     "APP_ENV": "production",
-    "CORS_ORIGIN": "https://siao.fer.tec.br,https://siao.vira-ia-br.workers.dev",
+    "CORS_ORIGIN": "https://siao.fer.tec.br",
     "PLATFORM_ADMIN_EMAIL": "ffnephew@hotmail.com",
     "COOKIE_SECURE": "true",
     "COOKIE_SAME_SITE": "lax",
