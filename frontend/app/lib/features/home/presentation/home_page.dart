@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../../../core/widgets/app_brand.dart';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -397,7 +398,7 @@ class _DesktopHomeLayout extends StatelessWidget {
           return Column(
             children: [
               if (gallery != null) ...[
-                SizedBox(height: 370, child: gallery.build(context)),
+                SizedBox(height: 430, child: gallery.build(context)),
                 if (cards.isNotEmpty) const SizedBox(height: 20),
               ],
               if (cards.isNotEmpty) _DesktopCounterGrid(cards: cards),
@@ -504,6 +505,11 @@ class _HomePhotoCarouselState extends State<_HomePhotoCarousel> {
   void initState() {
     super.initState();
     controller = PageController(viewportFraction: .78);
+    _startAutoPlay();
+  }
+
+  void _startAutoPlay() {
+    autoTimer?.cancel();
     autoTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted || widget.images.length < 2 || !controller.hasClients) {
         return;
@@ -515,6 +521,17 @@ class _HomePhotoCarouselState extends State<_HomePhotoCarousel> {
         curve: Curves.easeOutCubic,
       );
     });
+  }
+
+  void _goTo(int index) {
+    if (!controller.hasClients || widget.images.isEmpty) return;
+    final count = widget.images.length;
+    controller.animateToPage(
+      (index + count) % count,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+    );
+    _startAutoPlay();
   }
 
   @override
@@ -533,9 +550,22 @@ class _HomePhotoCarouselState extends State<_HomePhotoCarousel> {
         final bounded = constraints.hasBoundedHeight;
         final showTitle = widget.titleVisible && widget.title.trim().isNotEmpty;
         final titleHeight = showTitle ? (mobile ? 42.0 : 52.0) : 0.0;
+        final showDots = widget.images.length > 1;
+        final dotsHeight = showDots ? 24.0 : 0.0;
         final photoHeight = bounded
-            ? (constraints.maxHeight - 20 - titleHeight).clamp(150.0, 444.0)
+            ? (constraints.maxHeight - 20 - titleHeight - dotsHeight)
+                .clamp(150.0, 460.0)
             : (mobile ? 292.0 : 386.0);
+        final showArrows = bounded && widget.images.length > 1;
+        // On wide screens the carousel used to stretch across the whole Home
+        // and cut portrait photos into a thin banner. Keep a pleasant photo
+        // ratio and center the carousel instead.
+        final pageWidth = bounded
+            ? (photoHeight * 1.72).clamp(280.0, constraints.maxWidth)
+            : constraints.maxWidth;
+        final carouselWidth = bounded
+            ? (pageWidth / .78).clamp(0.0, constraints.maxWidth)
+            : constraints.maxWidth;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -546,61 +576,149 @@ class _HomePhotoCarouselState extends State<_HomePhotoCarousel> {
               ),
             SizedBox(
               height: photoHeight,
-              child: ClipRect(
-                child: PageView.builder(
-                  controller: controller,
-                  itemCount: widget.images.length,
-                  onPageChanged: (index) => setState(() => current = index),
-                  itemBuilder: (context, index) {
-                    final image = widget.images[index];
-                    return AnimatedBuilder(
-                      animation: controller,
-                      child: _FloatingHomePhoto(url: _homeMediaUrl(image)),
-                      builder: (context, child) {
-                        var page = current.toDouble();
-                        if (controller.hasClients &&
-                            controller.position.haveDimensions) {
-                          page = controller.page ?? page;
-                        }
-                        final distance = (page - index).abs().clamp(0.0, 1.0);
-                        return Transform.scale(
-                          scale: 1 - distance * .06,
-                          child: Opacity(
-                            opacity: 1 - distance * .20,
-                            child: child,
+              child: Center(
+                child: SizedBox(
+                  width: carouselWidth,
+                  height: photoHeight,
+                  child: ClipRect(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: ScrollConfiguration(
+                            behavior: ScrollConfiguration.of(context).copyWith(
+                              dragDevices: const {
+                                PointerDeviceKind.touch,
+                                PointerDeviceKind.mouse,
+                                PointerDeviceKind.stylus,
+                                PointerDeviceKind.trackpad,
+                              },
+                            ),
+                            child: PageView.builder(
+                              controller: controller,
+                              itemCount: widget.images.length,
+                              onPageChanged: (index) =>
+                                  setState(() => current = index),
+                              itemBuilder: (context, index) {
+                                final image = widget.images[index];
+                                return AnimatedBuilder(
+                                  animation: controller,
+                                  child: _FloatingHomePhoto(
+                                    url: _homeMediaUrl(image),
+                                  ),
+                                  builder: (context, child) {
+                                    var page = current.toDouble();
+                                    if (controller.hasClients &&
+                                        controller.position.haveDimensions) {
+                                      page = controller.page ?? page;
+                                    }
+                                    final distance =
+                                        (page - index).abs().clamp(0.0, 1.0);
+                                    return Transform.scale(
+                                      scale: 1 - distance * .06,
+                                      child: Opacity(
+                                        opacity: 1 - distance * .20,
+                                        child: child,
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
                           ),
-                        );
-                      },
-                    );
-                  },
+                        ),
+                        if (showArrows) ...[
+                          Positioned(
+                            left: 4,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: _CarouselArrow(
+                                icon: FamilyIcons.chevronLeft,
+                                onPressed: () => _goTo(current - 1),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 4,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: _CarouselArrow(
+                                icon: FamilyIcons.chevronRight,
+                                onPressed: () => _goTo(current + 1),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-            if (widget.images.length > 1 && !bounded)
+            if (showDots)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (var i = 0; i < widget.images.length; i++)
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        width: i == current ? 18 : 7,
-                        height: 7,
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        decoration: BoxDecoration(
-                          color: i == current
-                              ? palette.primary
-                              : palette.primary.withValues(alpha: .22),
-                          borderRadius: BorderRadius.circular(999),
+                child: SizedBox(
+                  height: dotsHeight - 2,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 0; i < widget.images.length; i++)
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _goTo(i),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 3,
+                              vertical: 6,
+                            ),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: i == current ? 18 : 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: i == current
+                                    ? palette.primary
+                                    : palette.primary.withValues(alpha: .22),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
           ],
         );
       },
+    );
+  }
+}
+
+class _CarouselArrow extends StatelessWidget {
+  const _CarouselArrow({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<AppPalette>()!;
+    return Material(
+      color: palette.card.withValues(alpha: .86),
+      shape: CircleBorder(
+        side: BorderSide(color: palette.primary.withValues(alpha: .20)),
+      ),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 20, color: palette.primary),
+        ),
+      ),
     );
   }
 }

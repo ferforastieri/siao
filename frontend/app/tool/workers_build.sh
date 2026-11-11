@@ -9,7 +9,7 @@ ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 APP="$ROOT/frontend/app"
 LANDING="$ROOT/frontend/landing"
 
-SITE_URL="${SITE_URL:-https://siao.vira-ia-br.workers.dev}"
+SITE_URL="${SITE_URL:-https://siao.fer.tec.br}"
 API_URL="${API_URL:-$SITE_URL/api}"
 APP_URL="${APP_URL:-$SITE_URL/}"
 

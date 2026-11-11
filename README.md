@@ -127,9 +127,9 @@ jaspr serve
 
 ## Links
 
-- Site e aplicativo web: https://siao.vira-ia-br.workers.dev
+- Site e aplicativo web: https://siao.fer.tec.br
 - Aplicativo Android: https://github.com/ferforastieri/siao/releases/latest/download/app-release.apk
-- API: https://siao.vira-ia-br.workers.dev/api/health
+- API: https://siao.fer.tec.br/api/health
 
 ## Licença
 
