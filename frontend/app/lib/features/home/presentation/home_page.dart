@@ -9,6 +9,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/auth/authenticated_media.dart';
 import 'package:family_ui/family_ui.dart';
 import '../../../core/widgets/app_page_header.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/home_scene.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/config/app_config.dart';
@@ -534,6 +535,26 @@ class _HomePhotoCarouselState extends State<_HomePhotoCarousel> {
     _startAutoPlay();
   }
 
+  void _openPhoto(int index) {
+    if (index < 0 || index >= widget.images.length) return;
+    showAppSheet<void>(
+      context: context,
+      builder: (_) => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Flexible(
+            child: _HomePhotoViewer(
+              url: _homeMediaUrl(widget.images[index]),
+              title: widget.title,
+              index: index,
+              total: widget.images.length,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     autoTimer?.cancel();
@@ -604,6 +625,7 @@ class _HomePhotoCarouselState extends State<_HomePhotoCarousel> {
                                   animation: controller,
                                   child: _FloatingHomePhoto(
                                     url: _homeMediaUrl(image),
+                                    onTap: () => _openPhoto(index),
                                   ),
                                   builder: (context, child) {
                                     var page = current.toDouble();
@@ -804,9 +826,10 @@ class _ArcGalleryTitlePainter extends CustomPainter {
 }
 
 class _FloatingHomePhoto extends StatelessWidget {
-  const _FloatingHomePhoto({required this.url});
+  const _FloatingHomePhoto({required this.url, required this.onTap});
 
   final String url;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -814,40 +837,160 @@ class _FloatingHomePhoto extends StatelessWidget {
     final mobile = MediaQuery.sizeOf(context).width < 760;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: palette.primary.withValues(alpha: .38),
-            width: 1.4,
-          ),
-          boxShadow: mobile
-              ? null
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: .12),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: palette.primary.withValues(alpha: .38),
+                width: 1.4,
+              ),
+              boxShadow: mobile
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: .12),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    url,
+                    headers: authenticatedMediaHeaders(),
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: SkeletonBox(
+                          width: 160,
+                          height: 18,
+                          borderRadius: 999,
+                        ),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Icon(FamilyIcons.brokenImageOutlined, size: 42),
+                    ),
+                  ),
+                  Positioned(
+                    right: 10,
+                    bottom: 10,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: .42),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(7),
+                        child: Icon(
+                          FamilyIcons.search,
+                          color: Colors.white,
+                          size: 17,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Image.network(
-            url,
-            headers: authenticatedMediaHeaders(),
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, progress) {
-              if (progress == null) return child;
-              return const Center(
-                child: SkeletonBox(width: 160, height: 18, borderRadius: 999),
-              );
-            },
-            errorBuilder: (_, __, ___) => const Center(
-              child: Icon(FamilyIcons.brokenImageOutlined, size: 42),
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HomePhotoViewer extends StatelessWidget {
+  const _HomePhotoViewer({
+    required this.url,
+    required this.title,
+    required this.index,
+    required this.total,
+  });
+
+  final String url;
+  final String title;
+  final int index;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<AppPalette>()!;
+    final maxHeight = MediaQuery.sizeOf(context).height * .68;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 900),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: palette.primary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 22,
+                  ),
+                ),
+              ),
+              if (total > 1)
+                Text(
+                  '${index + 1} de $total',
+                  style: TextStyle(
+                    color: palette.muted,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight),
+              child: Image.network(
+                url,
+                headers: authenticatedMediaHeaders(),
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return const SizedBox(
+                    height: 260,
+                    child: Center(
+                      child: SkeletonBox(
+                        width: 160,
+                        height: 18,
+                        borderRadius: 999,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (_, __, ___) => SizedBox(
+                  height: 220,
+                  child: Center(
+                    child: Icon(
+                      FamilyIcons.brokenImageOutlined,
+                      color: palette.primary,
+                      size: 54,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
