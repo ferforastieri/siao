@@ -57,6 +57,7 @@ jobs:
         run: |
           gh release view latest >/dev/null 2>&1 || gh release create latest --title "Última versão" --notes "APK mais recente do Sião."
           gh release upload latest frontend/app/build/app/outputs/flutter-apk/app-release.apk --clobber
+          gh release edit latest --latest
       - name: Attach APK to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
